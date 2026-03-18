@@ -20,7 +20,7 @@
         <h2>How it works</h2>
         <ol>
           <li>Start the rear camera and select the live measuring tool for either the top or side shot.</li>
-          <li>Drag the calipers over a known reference and the disc feature you want to frame.</li>
+          <li>Drag the calipers over the same reference and disc edges you want seeded into the captured measurement.</li>
           <li>Capture a top view to measure diameter and rim width.</li>
           <li>Capture a side profile to measure dome height and parting line height.</li>
           <li>Review the calculated profile and a heuristic stability summary.</li>
@@ -46,8 +46,8 @@
         </div>
         <div class="camera-shell" id="cameraShell">
           <video id="cameraFeed" autoplay playsinline muted></video>
-          <div id="topGuide" class="guide guide-top">Top tool: align the blue caliper to your reference and the green caliper to the disc diameter.</div>
-          <div id="sideGuide" class="guide guide-side">Side tool: align the blue caliper to your reference, gold to profile height, and green to the PLH window.</div>
+          <div id="topGuide" class="guide guide-top">Top tool: align blue to the reference and green to the exact outer disc edges you want seeded on capture.</div>
+          <div id="sideGuide" class="guide guide-side">Side tool: align cyan to the reference, green to the shoulder line, gold to the bottom rim line, and cyan to the parting line.</div>
           <div id="liveMeasureOverlay" class="measure-overlay" aria-hidden="true"></div>
         </div>
         <div class="capture-row">
@@ -58,14 +58,14 @@
           <article id="topToolCard" class="tool-card active">
             <div class="tool-card-header">
               <h3>Top measuring tool</h3>
-              <p>Use the live calipers to frame the reference object and the disc diameter before capture.</p>
+              <p>Use the live calipers to seed the reference span and disc outer-edge span before capture.</p>
             </div>
             <div id="topToolMetrics" class="tool-metrics"></div>
           </article>
           <article id="sideToolCard" class="tool-card">
             <div class="tool-card-header">
               <h3>Side measuring tool</h3>
-              <p>Use the live calipers to line up the side-profile reference, total height, and PLH window.</p>
+              <p>Use the live calipers to seed the side reference, shoulder line, bottom rim line, and parting line before capture.</p>
             </div>
             <div id="sideToolMetrics" class="tool-metrics"></div>
           </article>

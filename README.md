@@ -23,14 +23,14 @@ Then open <http://localhost:4173> in a modern mobile or desktop browser.
 
 1. Start the rear-facing camera.
 2. Choose the **top view tool** or **side view tool** in the live camera panel.
-3. Drag the on-screen measuring calipers over your known-width reference and the disc feature you want to frame.
-4. Capture a **top view** with the disc and reference object in frame.
-5. Capture a **side view** with the same type of reference object in the disc's profile plane.
-6. Annotate the captured images and run the analysis to see the calculated dimensions and heuristic flight interpretation.
+3. Drag the on-screen measuring calipers over the same reference and disc edges you want automatically seeded into the captured measurement.
+4. Capture a **top view** with the disc and reference object in frame; the app seeds the reference span and disc outer-edge span.
+5. Capture a **side view** with the same type of reference object in the disc's profile plane; the app seeds the reference, shoulder, bottom-rim, and parting-line spans.
+6. Finish any remaining annotations and run the analysis to see the calculated dimensions and heuristic flight interpretation.
 
 ## Notes
 
 - The app ships as static HTML, CSS, and JavaScript for easy hosting.
-- The live measuring tools are framing aids; the final geometry still comes from the captured-image annotations.
+- The live measuring tools now seed matching capture points so the live view and captured annotation workflow stay aligned.
 - Results are estimates and depend heavily on perspective control and annotation accuracy.
 - Using the same distance and plane for the disc and reference object improves results significantly.

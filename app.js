@@ -28,8 +28,7 @@ const LIVE_TOOL_PRESETS = {
       colorClass: 'accent',
       start: { x: 0.18, y: 0.18 },
       end: { x: 0.42, y: 0.18 },
-      inputId: 'topReferenceWidth',
-      secondaryLabel: 'Set this to your known object width',
+      secondaryLabel: 'Match this to your known-width object.',
     },
     {
       key: 'diameter',
@@ -37,8 +36,7 @@ const LIVE_TOOL_PRESETS = {
       colorClass: 'success',
       start: { x: 0.16, y: 0.53 },
       end: { x: 0.84, y: 0.53 },
-      inputId: 'topReferenceWidth',
-      secondaryLabel: 'Use this to line up the disc edge-to-edge',
+      secondaryLabel: 'These points seed the captured outer-edge measurement.',
     },
   ],
   side: [
@@ -48,26 +46,31 @@ const LIVE_TOOL_PRESETS = {
       colorClass: 'accent',
       start: { x: 0.18, y: 0.82 },
       end: { x: 0.42, y: 0.82 },
-      inputId: 'sideReferenceWidth',
-      secondaryLabel: 'Set this to the known side-view reference width',
+      secondaryLabel: 'Match this to your known-width object.',
     },
     {
-      key: 'height',
-      label: 'Profile height',
+      key: 'shoulder',
+      label: 'Shoulder line',
+      colorClass: 'success',
+      start: { x: 0.27, y: 0.36 },
+      end: { x: 0.73, y: 0.36 },
+      secondaryLabel: 'Seeds the left/right shoulder points on capture.',
+    },
+    {
+      key: 'bottom',
+      label: 'Bottom rim line',
       colorClass: 'warning',
-      start: { x: 0.72, y: 0.28 },
-      end: { x: 0.72, y: 0.78 },
-      inputId: 'sideReferenceWidth',
-      secondaryLabel: 'Bracket the full side profile height',
+      start: { x: 0.25, y: 0.74 },
+      end: { x: 0.75, y: 0.74 },
+      secondaryLabel: 'Seeds the left/right bottom points on capture.',
     },
     {
       key: 'plh',
-      label: 'PLH window',
-      colorClass: 'success',
-      start: { x: 0.84, y: 0.54 },
-      end: { x: 0.84, y: 0.75 },
-      inputId: 'sideReferenceWidth',
-      secondaryLabel: 'Use this as a quick PLH comparison guide',
+      label: 'Parting line',
+      colorClass: 'accent',
+      start: { x: 0.28, y: 0.58 },
+      end: { x: 0.72, y: 0.58 },
+      secondaryLabel: 'Seeds the left/right parting-line points on capture.',
     },
   ],
 };
@@ -141,7 +144,7 @@ async function startCamera() {
 
     state.stream = stream;
     elements.cameraFeed.srcObject = stream;
-    setStatus('Camera running. Drag the live measuring calipers to frame the top or side shot before you capture it.');
+    setStatus('Camera running. Position the live tool so its calipers match the same points you plan to measure after capture.');
   } catch (error) {
     console.error(error);
     setStatus('Unable to access camera. Check browser permissions and make sure the app is served over HTTPS or localhost.', true);
@@ -157,10 +160,47 @@ function stopCamera() {
   setStatus('Camera stopped. You can still annotate any captured frames.');
 }
 
+function seedCapturedPoints(view, imageWidth, imageHeight) {
+  const clampToImage = (point) => ({
+    x: clamp(point.x * imageWidth, 0, imageWidth),
+    y: clamp(point.y * imageHeight, 0, imageHeight),
+  });
+
+  if (view === 'top') {
+    const reference = getLiveSegment('top', 'reference');
+    const diameter = getLiveSegment('top', 'diameter');
+    return {
+      refLeft: clampToImage(reference.start),
+      refRight: clampToImage(reference.end),
+      outerLeft: clampToImage(diameter.start),
+      outerRight: clampToImage(diameter.end),
+    };
+  }
+
+  const reference = getLiveSegment('side', 'reference');
+  const shoulder = getLiveSegment('side', 'shoulder');
+  const bottom = getLiveSegment('side', 'bottom');
+  const plh = getLiveSegment('side', 'plh');
+  return {
+    refLeft: clampToImage(reference.start),
+    refRight: clampToImage(reference.end),
+    shoulderLeft: clampToImage(shoulder.start),
+    shoulderRight: clampToImage(shoulder.end),
+    bottomLeft: clampToImage(bottom.start),
+    bottomRight: clampToImage(bottom.end),
+    plhLeft: clampToImage(plh.start),
+    plhRight: clampToImage(plh.end),
+  };
+}
+
 function captureFrame(view) {
   if (!elements.cameraFeed.videoWidth || !elements.cameraFeed.videoHeight) {
     setStatus('Camera feed is not ready yet. Start the camera and wait for the preview.', true);
     return;
+  }
+
+  if (state.activeLiveTool !== view) {
+    setActiveLiveTool(view);
   }
 
   const canvas = document.createElement('canvas');
@@ -172,10 +212,14 @@ function captureFrame(view) {
   const image = new Image();
   image.onload = () => {
     state[view].image = image;
-    state[view].points = {};
+    state[view].points = seedCapturedPoints(view, image.width, image.height);
     drawView(view);
     renderPointList(view);
-    setStatus(`${view === 'top' ? 'Top' : 'Side'} view captured. Click the measurement points on the image in order.`);
+    const next = nextPointKey(view);
+    const nextLabel = pointOrder(view).find((point) => point.key === next)?.label;
+    setStatus(
+      `${view === 'top' ? 'Top' : 'Side'} view captured. Live tool points were seeded${nextLabel ? `; next annotation: ${nextLabel}.` : '.'}`,
+    );
   };
   image.src = canvas.toDataURL('image/jpeg', 0.92);
 }
@@ -252,6 +296,10 @@ function drawGuideLines(view, context) {
       context.strokeStyle = '#f6c66d';
       drawLine(context, points.bottomLeft, points.bottomRight);
     }
+    if (points.plhLeft && points.plhRight) {
+      context.strokeStyle = '#7ef29a';
+      drawLine(context, points.plhLeft, points.plhRight);
+    }
   }
 
   context.restore();
@@ -314,6 +362,13 @@ function distance(a, b) {
   return Math.hypot(b.x - a.x, b.y - a.y);
 }
 
+function midpoint(a, b) {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  };
+}
+
 function yOnLineAtX(a, b, x) {
   if (a.x === b.x) {
     return (a.y + b.y) / 2;
@@ -326,32 +381,8 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function mmLabel(pixelLength, referencePixels, referenceMm) {
-  if (!referencePixels || !referenceMm) {
-    return 'Set a reference width to convert to mm';
-  }
-  return `${((pixelLength / referencePixels) * referenceMm).toFixed(1)} mm`;
-}
-
 function getReferenceWidthForTool(view) {
   return Number(view === 'top' ? elements.topReferenceWidth.value : elements.sideReferenceWidth.value);
-}
-
-function getToolSegmentMetrics(view) {
-  const segments = state.liveTools[view];
-  const reference = segments.find((segment) => segment.key === 'reference');
-  const referencePixels = reference ? normalizedDistance(reference.start, reference.end) : 0;
-  const referenceMm = getReferenceWidthForTool(view);
-
-  return segments.map((segment) => {
-    const pixels = normalizedDistance(segment.start, segment.end);
-    return {
-      ...segment,
-      pixels,
-      pixelText: `${pixels.toFixed(0)} px`,
-      estimatedText: mmLabel(pixels, referencePixels, referenceMm),
-    };
-  });
 }
 
 function normalizedDistance(start, end) {
@@ -360,6 +391,70 @@ function normalizedDistance(start, end) {
     return 0;
   }
   return Math.hypot((end.x - start.x) * rect.width, (end.y - start.y) * rect.height);
+}
+
+function toMm(pixelLength, referencePixels, referenceMm) {
+  if (!referencePixels || !referenceMm) {
+    return null;
+  }
+  return (pixelLength / referencePixels) * referenceMm;
+}
+
+function formatMm(pixelLength, referencePixels, referenceMm) {
+  const value = toMm(pixelLength, referencePixels, referenceMm);
+  return value === null ? 'Set a reference width to convert to mm' : `${value.toFixed(1)} mm`;
+}
+
+function getLiveSegment(view, key) {
+  return state.liveTools[view].find((segment) => segment.key === key);
+}
+
+function getToolSegmentMetrics(view) {
+  const segments = state.liveTools[view];
+  const reference = getLiveSegment(view, 'reference');
+  const referencePixels = reference ? normalizedDistance(reference.start, reference.end) : 0;
+  const referenceMm = getReferenceWidthForTool(view);
+
+  const metrics = segments.map((segment) => {
+    const pixels = normalizedDistance(segment.start, segment.end);
+    return {
+      ...segment,
+      pixels,
+      pixelText: `${pixels.toFixed(0)} px`,
+      estimatedText: formatMm(pixels, referencePixels, referenceMm),
+    };
+  });
+
+  if (view === 'side') {
+    const shoulder = getLiveSegment('side', 'shoulder');
+    const bottom = getLiveSegment('side', 'bottom');
+    const plh = getLiveSegment('side', 'plh');
+    const shoulderMid = midpoint(shoulder.start, shoulder.end);
+    const bottomMid = midpoint(bottom.start, bottom.end);
+    const plhMid = midpoint(plh.start, plh.end);
+    const rect = elements.cameraShell.getBoundingClientRect();
+    const profileHeightPx = Math.abs(bottomMid.y - shoulderMid.y) * rect.height;
+    const plhHeightPx = Math.abs(bottomMid.y - plhMid.y) * rect.height;
+
+    metrics.push({
+      key: 'profileHeightDerived',
+      label: 'Derived profile height',
+      colorClass: 'warning',
+      secondaryLabel: 'Calculated from the shoulder and bottom-line midpoints.',
+      pixelText: `${profileHeightPx.toFixed(0)} px`,
+      estimatedText: formatMm(profileHeightPx, referencePixels, referenceMm),
+    });
+    metrics.push({
+      key: 'plhDerived',
+      label: 'Derived PLH height',
+      colorClass: 'success',
+      secondaryLabel: 'Calculated from the bottom-line and parting-line midpoints.',
+      pixelText: `${plhHeightPx.toFixed(0)} px`,
+      estimatedText: formatMm(plhHeightPx, referencePixels, referenceMm),
+    });
+  }
+
+  return metrics;
 }
 
 function renderLiveToolMetrics(view) {
@@ -395,6 +490,22 @@ function setActiveLiveTool(view) {
   renderLiveMeasureOverlay();
 }
 
+function positionSegmentElement(element, start, end) {
+  const rect = elements.liveMeasureOverlay.getBoundingClientRect();
+  const startX = start.x * rect.width;
+  const startY = start.y * rect.height;
+  const endX = end.x * rect.width;
+  const endY = end.y * rect.height;
+  const dx = endX - startX;
+  const dy = endY - startY;
+  const length = Math.hypot(dx, dy);
+  const angle = Math.atan2(dy, dx);
+  element.style.left = `${startX}px`;
+  element.style.top = `${startY}px`;
+  element.style.width = `${length}px`;
+  element.style.transform = `rotate(${angle}rad)`;
+}
+
 function renderLiveMeasureOverlay() {
   const overlay = elements.liveMeasureOverlay;
   overlay.innerHTML = '';
@@ -427,22 +538,6 @@ function renderLiveMeasureOverlay() {
   });
 }
 
-function positionSegmentElement(element, start, end) {
-  const rect = elements.liveMeasureOverlay.getBoundingClientRect();
-  const startX = start.x * rect.width;
-  const startY = start.y * rect.height;
-  const endX = end.x * rect.width;
-  const endY = end.y * rect.height;
-  const dx = endX - startX;
-  const dy = endY - startY;
-  const length = Math.hypot(dx, dy);
-  const angle = Math.atan2(dy, dx);
-  element.style.left = `${startX}px`;
-  element.style.top = `${startY}px`;
-  element.style.width = `${length}px`;
-  element.style.transform = `rotate(${angle}rad)`;
-}
-
 function beginHandleDrag(event) {
   const handle = event.target.closest('.measure-handle');
   if (!handle) {
@@ -462,9 +557,17 @@ function updateDraggedHandle(event) {
   }
 
   const rect = elements.liveMeasureOverlay.getBoundingClientRect();
+  if (!rect.width || !rect.height) {
+    return;
+  }
+
   const x = clamp((event.clientX - rect.left) / rect.width, 0.03, 0.97);
   const y = clamp((event.clientY - rect.top) / rect.height, 0.03, 0.97);
   const segment = state.liveTools[state.activeLiveTool].find(({ key }) => key === state.draggingHandle.segmentKey);
+  if (!segment) {
+    return;
+  }
+
   segment[state.draggingHandle.handleKey] = { x, y };
   renderLiveMeasureOverlay();
   renderAllLiveToolMetrics();
@@ -517,8 +620,6 @@ function calculateMetrics() {
     plh,
     domeRatio,
     plhRatio,
-    topScale,
-    sideScale,
   };
 }
 
