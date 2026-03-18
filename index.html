@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Disc Flight Lab</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Camera-assisted disc profiling</p>
+        <h1>Disc Flight Lab</h1>
+        <p class="lede">
+          Use your camera, a known-size reference object, and quick image annotations to estimate rim diameter,
+          dome shape, and parting line height so you can better predict stability and flight.
+        </p>
+      </div>
+      <div class="hero-card">
+        <h2>How it works</h2>
+        <ol>
+          <li>Start the rear camera and select the live measuring tool for either the top or side shot.</li>
+          <li>Drag the calipers over a known reference and the disc feature you want to frame.</li>
+          <li>Capture a top view to measure diameter and rim width.</li>
+          <li>Capture a side profile to measure dome height and parting line height.</li>
+          <li>Review the calculated profile and a heuristic stability summary.</li>
+        </ol>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel live-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Step 1</p>
+            <h2>Live camera + measuring tools</h2>
+          </div>
+          <div class="camera-actions">
+            <button id="startCameraBtn">Start camera</button>
+            <button id="stopCameraBtn" class="secondary">Stop</button>
+          </div>
+        </div>
+        <div class="tool-toggle" role="tablist" aria-label="Live measuring tools">
+          <button id="liveTopToolBtn" class="toggle-chip active" type="button">Top view tool</button>
+          <button id="liveSideToolBtn" class="toggle-chip" type="button">Side view tool</button>
+        </div>
+        <div class="camera-shell" id="cameraShell">
+          <video id="cameraFeed" autoplay playsinline muted></video>
+          <div id="topGuide" class="guide guide-top">Top tool: align the blue caliper to your reference and the green caliper to the disc diameter.</div>
+          <div id="sideGuide" class="guide guide-side">Side tool: align the blue caliper to your reference, gold to profile height, and green to the PLH window.</div>
+          <div id="liveMeasureOverlay" class="measure-overlay" aria-hidden="true"></div>
+        </div>
+        <div class="capture-row">
+          <button id="captureTopBtn">Capture top view</button>
+          <button id="captureSideBtn">Capture side view</button>
+        </div>
+        <div class="tool-cards">
+          <article id="topToolCard" class="tool-card active">
+            <div class="tool-card-header">
+              <h3>Top measuring tool</h3>
+              <p>Use the live calipers to frame the reference object and the disc diameter before capture.</p>
+            </div>
+            <div id="topToolMetrics" class="tool-metrics"></div>
+          </article>
+          <article id="sideToolCard" class="tool-card">
+            <div class="tool-card-header">
+              <h3>Side measuring tool</h3>
+              <p>Use the live calipers to line up the side-profile reference, total height, and PLH window.</p>
+            </div>
+            <div id="sideToolMetrics" class="tool-metrics"></div>
+          </article>
+        </div>
+        <p id="cameraStatus" class="status">Camera idle. Use HTTPS or localhost to access device cameras.</p>
+      </section>
+
+      <section class="workspace-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Step 2</p>
+              <h2>Top view measurement</h2>
+            </div>
+            <button id="resetTopBtn" class="secondary">Reset top points</button>
+          </div>
+          <p class="helper">
+            Click points in order: reference left, reference right, disc outer left, disc outer right, inner rim left,
+            inner rim right.
+          </p>
+          <div class="canvas-wrap">
+            <canvas id="topCanvas" width="960" height="720"></canvas>
+          </div>
+          <div class="point-grid" id="topPointList"></div>
+          <label class="field">
+            Reference width (mm)
+            <input id="topReferenceWidth" type="number" min="1" step="0.1" value="85.6" />
+          </label>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Step 3</p>
+              <h2>Side profile measurement</h2>
+            </div>
+            <button id="resetSideBtn" class="secondary">Reset side points</button>
+          </div>
+          <p class="helper">
+            Click points in order: reference left, reference right, left shoulder, right shoulder, dome apex, left
+            bottom, right bottom, left parting line, right parting line.
+          </p>
+          <div class="canvas-wrap">
+            <canvas id="sideCanvas" width="960" height="720"></canvas>
+          </div>
+          <div class="point-grid" id="sidePointList"></div>
+          <label class="field">
+            Reference width (mm)
+            <input id="sideReferenceWidth" type="number" min="1" step="0.1" value="85.6" />
+          </label>
+        </section>
+      </section>
+
+      <section class="panel results-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Step 4</p>
+            <h2>Estimated disc profile</h2>
+          </div>
+          <button id="analyzeBtn">Analyze flight profile</button>
+        </div>
+        <div class="results-grid">
+          <article>
+            <h3>Geometry</h3>
+            <dl id="geometryResults" class="metric-list"></dl>
+          </article>
+          <article>
+            <h3>Flight interpretation</h3>
+            <div id="flightSummary" class="summary-card">
+              Capture both views and annotate the required points to generate a flight summary.
+            </div>
+          </article>
+        </div>
+        <p class="footnote">
+          Estimates depend on camera perspective, calibration accuracy, and how consistently you place the reference
+          object in the same plane as the disc.
+        </p>
+      </section>
+    </main>
+
+    <template id="metricItemTemplate">
+      <div>
+        <dt></dt>
+        <dd></dd>
+      </div>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
